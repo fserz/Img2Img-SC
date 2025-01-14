@@ -104,8 +104,8 @@ class Only_images_Flickr8kDataset(Dataset):
 if __name__ == "__main__":
     
 
-    capt_file_path=   "path/to/captions.txt"          #"G:/Giordano/Flickr8kDataset/captions.txt"
-    images_dir_path=  "path/to/Images"                #"G:/Giordano/Flickr8kDataset/Images/"
+    capt_file_path=   "D:\code\Img2Img\Img2Img-SC\Flickr8kDataset\captions.txt"          #"G:/Giordano/Flickr8kDataset/captions.txt"
+    images_dir_path=  "D:\code\Img2Img\Img2Img-SC\Flickr8kDataset\Images"                #"G:/Giordano/Flickr8kDataset/Images/"
     
     dataset=Flickr8kDataset(images_dir_path, capt_file_path)
 

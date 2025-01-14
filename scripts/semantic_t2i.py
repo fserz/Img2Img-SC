@@ -29,14 +29,20 @@ from transformers import pipeline
 from SSIM_PIL import compare_ssim
 from torchvision.transforms import Resize, ToTensor, Normalize, Compose
 
+# import os
+# os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+import os
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
+
 
 '''
 
 INIT DATASET AND DATALOADER
 
 '''
-capt_file_path  =  "path/to/captions.txt"          #"G:/Giordano/Flickr8kDataset/captions.txt"
-images_dir_path =  "path/to/Images"                #"G:/Giordano/Flickr8kDataset/Images/"
+capt_file_path  =  "D:\code\Img2Img\Img2Img-SC\Flickr8kDataset\captions.txt"          #"G:/Giordano/Flickr8kDataset/captions.txt"
+images_dir_path =  "D:/code/Img2Img/Img2Img-SC/Flickr8kDataset/Images/"                #"G:/Giordano/Flickr8kDataset/Images/"
 batch_size      =  1    
 
 dataset = Only_images_Flickr8kDataset(images_dir_path)
@@ -50,8 +56,8 @@ MODEL CHECKPOINT
 '''
 
 
-model_ckpt_path = "path/to/model-checkpoint" #"G:/Giordano/stablediffusion/checkpoints/v1-5-pruned.ckpt"  #v2-1_512-ema-pruned.ckpt"        
-config_path     = "path/to/model-config"     #"G:/Giordano/stablediffusion/configs/stable-diffusion/v1-inference.yaml"
+model_ckpt_path = "D:\code\Img2Img\Img2Img-SC\stablediffusion\checkpoints\\v1-5-pruned.ckpt" #"G:/Giordano/stablediffusion/checkpoints/v1-5-pruned.ckpt"  #v2-1_512-ema-pruned.ckpt"
+config_path     = "D:\code\Img2Img\Img2Img-SC\stablediffusion\checkpoints\\v1-inference.yaml"     #"G:/Giordano/stablediffusion/configs/stable-diffusion/v1-inference.yaml"
 
 
 
@@ -96,6 +102,7 @@ def test(dataloader,
          outpath="outpath"
          ):
 
+    # blip = pipeline("image-to-text", model="D:\code\Img2Img\Img2Img-SC\Salesforce\\blip-image-captioning-large")
     blip = pipeline("image-to-text", model="Salesforce/blip-image-captioning-large")
 
     model_id = "runwayml/stable-diffusion-v1-5"
@@ -174,11 +181,30 @@ def test(dataloader,
             if i==num_images:
               break
 
-    print(f'mean lpips score: {sum(lpips_values)/len(lpips_values)}')
+    # print(f'mean lpips score: {sum(lpips_values)/len(lpips_values)}')
+    #
+    # print(f'mean ssim score: {sum(ssim_values)/len(ssim_values)}')
+    #
+    # print(f'mean time score: {sum(time_values)/len(time_values)}')
 
-    print(f'mean ssim score: {sum(ssim_values)/len(ssim_values)}')
 
-    print(f'mean time score: {sum(time_values)/len(time_values)}')
+    # Calculate mean scores
+    mean_lpips_score = sum(lpips_values) / len(lpips_values)
+    mean_ssim_score = sum(ssim_values) / len(ssim_values)
+    mean_time = sum(time_values) / len(time_values)
+
+    print(f'mean lpips score at snr={snr} : {mean_lpips_score}')
+    print(f'mean ssim score at snr={snr} : {mean_ssim_score}')
+    print(f'mean time with sampling iterations {sampling_steps} : {mean_time}')
+
+    # Write mean scores to a file
+    results_file = os.path.join('outpath', f"results-t2i-snr-{snr}.txt")
+    with open(results_file, "w") as f:
+        f.write(f"Mean LPIPS score at SNR={snr}: {mean_lpips_score}\n")
+        f.write(f"Mean SSIM score at SNR={snr}: {mean_ssim_score}\n")
+        f.write(f"Mean time with sampling iterations {sampling_steps}: {mean_time}\n")
+
+    return 1
 
 if __name__ == "__main__":
 
