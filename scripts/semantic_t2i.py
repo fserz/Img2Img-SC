@@ -29,8 +29,7 @@ from transformers import pipeline
 from SSIM_PIL import compare_ssim
 from torchvision.transforms import Resize, ToTensor, Normalize, Compose
 
-# import os
-# os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
 import os
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
