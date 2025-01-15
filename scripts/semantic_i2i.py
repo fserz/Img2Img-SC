@@ -56,39 +56,68 @@ config_path     = "D:\code\Img2Img\Img2Img-SC\stablediffusion\checkpoints\\v1-in
 
 def load_model_from_config(config, ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
+    # 加载检查点，加载检查点文件 ckpt，将模型加载到CPU上
     pl_sd = torch.load(ckpt, map_location="cpu")
+    # 检查检查点中是否包含 global_step，如果有则打印该值，通常用于跟踪模型训练的进度
     if "global_step" in pl_sd:
         print(f"Global Step: {pl_sd['global_step']}")
+    # 从加载的检查点中提取 state_dict，这是模型的权重和参数
     sd = pl_sd["state_dict"]
+    # 实例化模型，函数根据提供的配置文件实例化模型。
     model = instantiate_from_config(config.model)
+    # 加载模型权重
     m, u = model.load_state_dict(sd, strict=False)
+    # 检查丢失和意外的键
+    # 如果有丢失的键（模型中定义的参数未在检查点中找到）且 verbose 为真，则打印这些键。
     if len(m) > 0 and verbose:
         print("missing keys:")
         print(m)
+    # 如果有意外的键（检查点中有未在模型中定义的参数）且 verbose 为真，则打印这些键。
     if len(u) > 0 and verbose:
         print("unexpected keys:")
         print(u)
 
+    # 将模型移至GPU并设置为评估模式
+    # 将模型移动到GPU上以利用硬件加速。
     model.cuda()
+    # 将模型设置为评估模式，以确保某些层（如 dropout 和 batch normalization）以推理模式运行。
     model.eval()
     return model
 
-
+# 该函数的功能是从给定路径加载图像，调整其大小，归一化并转换为 PyTorch 张量格式，最后返回一个适合模型输入的图像张量。
 def load_img(path):
+    # 将图像打开的图像，转换为RGB格式，确保图像有三个通道（红、绿、蓝）。
     image = Image.open(path).convert("RGB")
+    # 目标尺寸被固定为 (512, 512)
     w, h = (512,512)#image.size
     #print(f"loaded input image of size ({w}, {h}) from {path}")
+    # 调整尺寸为64的倍数，使用 map 和 lambda 函数，将图像的宽度和高度调整为最接近的64的倍数。
+    # 这种调整是为了确保后续处理（如卷积神经网络）可以顺利进行，因为某些网络架构要求输入尺寸为特定倍数。
     w, h = map(lambda x: x - x % 64, (w, h))  # resize to integer multiple of 64
+    # 转换为 NumPy 数组并归一化
+    # 使用 PIL.Image.LANCZOS 插值方法将图像调整到新尺寸 (w, h)。LANCZOS 是一种高质量的抗锯齿重采样滤波器。
     image = image.resize((w, h), resample=PIL.Image.LANCZOS)
+    # 将图像转换为 NumPy 数组，并将数据类型转换为 float32，除以255.0将像素值归一化到 [0, 1] 的范围。
     image = np.array(image).astype(np.float32) / 255.0
+
+    # 改变数组维度顺序
+    # image[None] 在第0维新增一个维度，代表批次大小。.transpose(0, 3, 1, 2) 将数组的维度
+    # 从 (batch, height, width, channels)  转换为 (batch, channels, height, width)。
     image = image[None].transpose(0, 3, 1, 2)
+    # 将 NumPy 数组转换为 PyTorch 张量，以便在模型中使用。
     image = torch.from_numpy(image)
+    # 将像素值映射到 [-1, 1] 范围
     return 2. * image - 1.
 
 
 
     
-
+# dataloader: 数据加载器，用于批量读取图像数据。 snr: 信噪比（Signal-to-Noise Ratio）。
+# num_images: 要处理的图像总数。 batch_size: 每批次的图像数量。
+# num_images_per_sample: 每个样本生成的图像数量。 outpath: 输出路径，用于保存生成的图像和文本。
+# model: 用于生成图像的模型。 device: 设备（CPU或GPU）。
+# sampler: 采样器，用于生成图像。 strength: 控制图像生成强度的参数。
+# ddim_steps: DDIM采样步数。 scale: 调整生成图像质量的缩放参数。
 def test(dataloader,
          snr=10,
          num_images=100,
@@ -101,15 +130,16 @@ def test(dataloader,
          strength=0.8,
          ddim_steps=50,
          scale=9.0):
-    
-    # blip = pipeline("image-to-text", model="D:\code\Img2Img\Img2Img-SC\Salesforce\\blip-image-captioning-large")
-    # blip = pipeline("image-to-text", model="D:/code/Img2Img/Img2Img-SC/Salesforce/blip-image-captioning-large")
+
+    # 使用 transformers 库加载 BLIP 模型，该模型用于自动生成图像的描述。
     blip = pipeline("image-to-text", model="Salesforce/blip-image-captioning-large")
     i=0
 
+    # 计算采样步骤，并根据指定步数和参数设置采样器的调度。
     sampling_steps = int(strength*50)
     print(sampling_steps)
     sampler.make_schedule(ddim_num_steps=50, ddim_eta=0.0, verbose=False) #attenzione ai parametri
+    # 为保存生成图像的目录创建路径，如果不存在则创建目录。
     sample_path = os.path.join(outpath, f"Test-samples-{snr}-{sampling_steps}")
     os.makedirs(sample_path, exist_ok=True)
 
@@ -119,16 +149,21 @@ def test(dataloader,
     sample_orig_path = os.path.join(outpath, f"Test-samples-orig-{snr}-{sampling_steps}")
     os.makedirs(sample_orig_path, exist_ok=True)
 
+    # 初始化 LPIPS（感知图像质量评估）和 SSIM（结构相似性指数）计算的工具和列表，用于存储评估结果。
     lpips = lp.LPIPS(net='alex')
+
     lpips_values = []
 
     ssim_values = []
 
     time_values = []
 
+    # 循环处理图像数据
+    # 使用 tqdm 进行进度跟踪，并遍历数据加载器中的每个批次。
     tq = tqdm(dataloader,total=num_images)
     for batch in tq:
 
+        # 读取图像文件，使用 BLIP 模型生成图像描述。
         img_file_path = batch[0]
 
         #Open Image
@@ -140,6 +175,7 @@ def test(dataloader,
         
         base_count = len(os.listdir(sample_path))
 
+        # 预处理图像，将其加载到指定设备，并将其转换为模型的潜在表示。
         assert os.path.isfile(img_file_path)
         init_image = load_img(img_file_path).to(device)
         init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
@@ -151,6 +187,7 @@ def test(dataloader,
         CHANNEL SIMULATION
         '''
 
+        # 使用 QAM16 调制模拟信道噪声。
         init_latent = qam16ModulationTensor(init_latent.cpu(),snr_db=snr).to(device)
 
         prompt = qam16ModulationString(prompt,snr_db=snr)  #NOISY BLIP PROMPT
@@ -174,6 +211,7 @@ def test(dataloader,
                                 prompts = list(prompts)
                             c = model.get_learned_conditioning(prompts)
                             # encode (scaled latent)
+                            # 对潜在表示进行编码和解码，生成新的图像样本。
                             z_enc = sampler.stochastic_encode(init_latent, torch.tensor([t_enc] * batch_size).to(device))
                             # z_enc = init_latent
                             # decode it
@@ -232,7 +270,7 @@ def test(dataloader,
     print(f'mean time with sampling iterations {sampling_steps} : {mean_time}')
 
     # Write mean scores to a file
-    results_file = os.path.join('outpath', f"results-i2i-snr-{snr}.txt")
+    results_file = os.path.join(outpath, f"results-i2i-snr-{snr}.txt")
     with open(results_file, "w") as f:
         f.write(f"Mean LPIPS score at SNR={snr}: {mean_lpips_score}\n")
         f.write(f"Mean SSIM score at SNR={snr}: {mean_ssim_score}\n")
@@ -251,7 +289,7 @@ if __name__ == "__main__":
         type=str,
         nargs="?",
         help="dir to write results to",
-        default="outputs/img2img-samples"
+        default="outputs/img2img-samples/i2i"
     )
 
     parser.add_argument(

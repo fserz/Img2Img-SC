@@ -60,7 +60,7 @@ model_ckpt_path = "D:\code\Img2Img\Img2Img-SC\stablediffusion\checkpoints\\v1-5-
 config_path     = "D:\code\Img2Img\Img2Img-SC\stablediffusion\checkpoints\\v1-inference.yaml"     #"G:/Giordano/stablediffusion/configs/stable-diffusion/v1-inference.yaml"
 
 
-
+# 模型加载函数 用于从给定的配置和检查点路径加载模型。加载后的模型被移动到GPU，并设置为评估模式。
 def load_model_from_config(config, ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, map_location="cpu")
@@ -81,6 +81,7 @@ def load_model_from_config(config, ckpt, verbose=False):
     return model
 
 
+# 加载图像，将其转换为RGB模式，调整尺寸为512x512，归一化并转换为PyTorch张量。
 def load_img(path):
     image = Image.open(path).convert("RGB")
     w, h = (512,512)#image.size
@@ -94,7 +95,8 @@ def load_img(path):
 
 
     
-
+# 进行一系列的测试：包括图像到文本的生成、文本噪声模拟、图像重建、以及SSIM和LPIPS值的计算。
+# 将结果保存为图像文件和文本文件。
 def test(dataloader,
          snr=10,
          num_images=100,
@@ -102,15 +104,17 @@ def test(dataloader,
          outpath="outpath"
          ):
 
-    # blip = pipeline("image-to-text", model="D:\code\Img2Img\Img2Img-SC\Salesforce\\blip-image-captioning-large")
+    # 使用Hugging Face的transformers库加载一个图像描述生成模型BLIP。
     blip = pipeline("image-to-text", model="Salesforce/blip-image-captioning-large")
 
+    # 指定使用的Stable Diffusion模型ID。
     model_id = "runwayml/stable-diffusion-v1-5"
     pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+    # 模型移到GPU运行
     pipe = pipe.to("cuda")
-
+    # 定义一个图像转换管道，调整图像大小到512x512，并将其转换为PyTorch张量。
     transform = Compose([Resize((512,512), antialias=True), transforms.PILToTensor() ])
-
+    # 使用LPIPS库计算感知相似度，加载AlexNet作为基准网络。
     lpips = lp.LPIPS(net='alex')
 
 
@@ -134,29 +138,34 @@ def test(dataloader,
 
     i=0
 
-
+    # 使用tqdm为dataloader添加进度条，迭代图片批次。
     for batch in tqdm(dataloader,total=num_images):
 
+            # 获取批次中的第一个图片路径。
             img_file_path = batch[0]
 
             #Open Image
             init_image = Image.open(img_file_path)
 
             #Automatically extract caption using BLIP model
+            # 使用BLIP模型生成图片描述。
             prompt_blip = blip(init_image)[0]["generated_text"]
 
             #Save Caption for Clip metric computation
+            # 打开一个文件用于写入生成的描述。
             f = open(os.path.join(text_path, f"{i}.txt"),"a")        
             f.write(prompt_blip)
             f.close()
 
 
             #Introduce noise in the text (aka. simulate noisy channel)
+            # 使用QAM16调制对文本引入噪声，模拟噪声通道。
             prompt_corrupted =  qam16ModulationString(prompt_blip,snr)
 
             #Compute time to reconstruct image
             time_start = time.time()
             #Reconstruct image using noisy text caption
+            # 使用噪声文本生成图片
             image_generated = pipe(prompt_corrupted,num_inference_steps=sampling_steps).images[0]
             time_finish = time.time()
 
@@ -164,16 +173,22 @@ def test(dataloader,
             time_values.append(time_elapsed)
 
             #Save images for subsequent FID and CLIP Score computation
+            # 保存生成的图片。
             image_generated.save(os.path.join(sample_path,f'{i}.png'))
+            # 保存原始图片
             init_image.save(os.path.join(sample_orig_path,f'{i}.png'))
 
             #Compute SSIM
+            # 调整原始图片的大小。
             init_image_copy = init_image.resize((512, 512), resample=PIL.Image.LANCZOS)
+            # 计算并保存原始图片和生成图片之间的SSIM值。
             ssim_values.append(compare_ssim(init_image_copy, image_generated))
 
             #Compute LPIPS
+            # 对生成的图片进行归一化和转换。
             image_generated = (transform(image_generated) / 255) *2 -1
             init_image = (transform(init_image) / 255 ) *2 - 1
+            # 计算并保存LPIPS分数。
             lp_score=lpips(init_image.cpu(),image_generated.cpu()).item()
             lpips_values.append(lp_score)
 
@@ -181,16 +196,12 @@ def test(dataloader,
             if i==num_images:
               break
 
-    # print(f'mean lpips score: {sum(lpips_values)/len(lpips_values)}')
-    #
-    # print(f'mean ssim score: {sum(ssim_values)/len(ssim_values)}')
-    #
-    # print(f'mean time score: {sum(time_values)/len(time_values)}')
-
-
     # Calculate mean scores
+    # 计算平均LPIPS分数。
     mean_lpips_score = sum(lpips_values) / len(lpips_values)
+    # 计算平均SSIM分数。
     mean_ssim_score = sum(ssim_values) / len(ssim_values)
+    # 计算平均生成时间
     mean_time = sum(time_values) / len(time_values)
 
     print(f'mean lpips score at snr={snr} : {mean_lpips_score}')
@@ -198,7 +209,7 @@ def test(dataloader,
     print(f'mean time with sampling iterations {sampling_steps} : {mean_time}')
 
     # Write mean scores to a file
-    results_file = os.path.join('outpath', f"results-t2i-snr-{snr}.txt")
+    results_file = os.path.join(outpath, f"results-t2i-snr-{snr}.txt")
     with open(results_file, "w") as f:
         f.write(f"Mean LPIPS score at SNR={snr}: {mean_lpips_score}\n")
         f.write(f"Mean SSIM score at SNR={snr}: {mean_ssim_score}\n")
@@ -215,7 +226,7 @@ if __name__ == "__main__":
         type=str,
         nargs="?",
         help="dir to write results to",
-        default="outputs/img2img-samples"
+        default="outputs/img2img-samples/t2i"
     )
 
     parser.add_argument(
