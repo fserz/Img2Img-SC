@@ -319,17 +319,33 @@ if __name__ == "__main__":
     #Strength is used to modulate the number of sampling steps. Steps=50*strength 
     test(test_dataloader,snr=10,num_images=100,batch_size=1,num_images_per_sample=1,outpath=outpath,
          model=model,device=device,sampler=sampler,strength=0.6,scale=9)
-    
+
     test(test_dataloader,snr=8.75,num_images=100,batch_size=1,num_images_per_sample=1,outpath=outpath,
          model=model,device=device,sampler=sampler,strength=0.6,scale=9)
-    
+
     test(test_dataloader,snr=7.50,num_images=100,batch_size=1,num_images_per_sample=1,outpath=outpath,
          model=model,device=device,sampler=sampler,strength=0.6,scale=9)
-    
+
     test(test_dataloader,snr=6.25,num_images=100,batch_size=1,num_images_per_sample=1,outpath=outpath,
          model=model,device=device,sampler=sampler,strength=0.6,scale=9)
-    
+
     test(test_dataloader,snr=5,num_images=100,batch_size=1,num_images_per_sample=1,outpath=outpath,
          model=model,device=device,sampler=sampler,strength=0.6,scale=9)
-    
-    
+
+    test(test_dataloader,snr=3,num_images=100,batch_size=1,num_images_per_sample=1,outpath=outpath,
+         model=model,device=device,sampler=sampler,strength=0.6,scale=9)
+
+    test(test_dataloader, snr=12.5, num_images=100, batch_size=1, num_images_per_sample=1, outpath=outpath,
+         model=model, device=device, sampler=sampler, strength=0.6, scale=9)
+
+    test(test_dataloader, snr=15, num_images=100, batch_size=1, num_images_per_sample=1, outpath=outpath,
+         model=model, device=device, sampler=sampler, strength=0.6, scale=9)
+
+    test(test_dataloader, snr=17.5, num_images=100, batch_size=1, num_images_per_sample=1, outpath=outpath,
+         model=model, device=device, sampler=sampler, strength=0.6, scale=9)
+
+    test(test_dataloader, snr=20, num_images=100, batch_size=1, num_images_per_sample=1, outpath=outpath,
+         model=model, device=device, sampler=sampler, strength=0.6, scale=9)
+
+    test(test_dataloader, snr=25, num_images=100, batch_size=1, num_images_per_sample=1, outpath=outpath,
+         model=model, device=device, sampler=sampler, strength=0.6, scale=9)

@@ -1,4 +1,7 @@
 import argparse
+
+import cv2
+
 import scripts.metrics as Metrics
 from PIL import Image
 import numpy as np
@@ -17,13 +20,13 @@ if __name__ == "__main__":
 
     # 真实图像路径
     parser.add_argument('-p_gt', '--path_gt', type=str,
-                        default='D:\code\Img2Img\Img2Img-SC\scripts\outputs\img2img-samples\i2i\Test-samples-orig-5-30')
+                        default='D:\code\Img2Img\Img2Img-SC\scripts\outputs\img2img-samples\\t2i\Test-TEXTONLY-sample-orig-25-50')
     # 生成图像路径
     parser.add_argument('-p', '--path', type=str,
-                        default='D:\code\Img2Img\Img2Img-SC\scripts\outputs\img2img-samples\i2i\Test-samples-5-30')
+                        default='D:\code\Img2Img\Img2Img-SC\scripts\outputs\img2img-samples\\t2i\Test-TEXTONLY-sample-25-50')
     # 文本描述路径
     parser.add_argument('-t', '--text_folder', type=str,
-                        default='D:\code\Img2Img\Img2Img-SC\scripts\outputs\img2img-samples\i2i\Test-text-samples-5-30')
+                        default='D:\code\Img2Img\Img2Img-SC\scripts\outputs\img2img-samples\\t2i\Test-TEXTONLY-text-25-50')
 
     args = parser.parse_args()
     # 获取图像文件 glob.glob(): 查找指定路径中所有 PNG 文件。
@@ -61,12 +64,21 @@ if __name__ == "__main__":
     idx = 0
     fid_idx = 0
 
+    target_size = (256, 256)  # 设置目标尺寸，确保图像大小一致
 
     for rname, fname in tqdm(zip(real_names, fake_names), total=len(real_names)):
         idx += 1
 
         hr_img = np.array(Image.open(rname))
         sr_img = np.array(Image.open(fname))
+        # 调整两个图片为统一形状
+        if hr_img.shape != sr_img.shape:
+            sr_img = cv2.resize(sr_img, (hr_img.shape[1], hr_img.shape[0]))
+
+        # Resize both images to the target size
+        hr_img = cv2.resize(hr_img, target_size)
+        sr_img = cv2.resize(sr_img, target_size)
+
         psnr = Metrics.calculate_psnr(sr_img, hr_img)
         ssim = Metrics.calculate_ssim(sr_img, hr_img)
         fid_img_list_real.append(torch.from_numpy(hr_img).permute(2,0,1).unsqueeze(0))

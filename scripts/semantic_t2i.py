@@ -247,13 +247,24 @@ if __name__ == "__main__":
     #START TESTING
 
     test(test_dataloader,snr=10,num_images=100,outpath=outpath)
-    
+
     test(test_dataloader,snr=8.75,num_images=100,outpath=outpath)
-    
+
     test(test_dataloader,snr=7.50,num_images=100,outpath=outpath)
-    
+
     test(test_dataloader,snr=6.25,num_images=100,outpath=outpath)
-    
+
     test(test_dataloader,snr=5,num_images=100,outpath=outpath)
-    
+
+    test(test_dataloader, snr=3, num_images=100, outpath=outpath)
+
+    test(test_dataloader, snr=12.5, num_images=100, outpath=outpath)
+
+    test(test_dataloader, snr=15, num_images=100, outpath=outpath)
+
+    test(test_dataloader, snr=17.5, num_images=100, outpath=outpath)
+
+    test(test_dataloader, snr=20, num_images=100, outpath=outpath)
+
+    test(test_dataloader, snr=25, num_images=100, outpath=outpath)
     
